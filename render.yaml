@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: orbit-notes
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm --prefix ../frontend ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

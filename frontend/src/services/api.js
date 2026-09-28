@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Same-origin API calls work on Render, while Vite proxies them to the local
+// Express server during development. VITE_API_URL remains available for a
+// deliberately separate API deployment.
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('orbit_notes_token');

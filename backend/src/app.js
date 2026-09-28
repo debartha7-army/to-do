@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import eventsRoutes from './routes/eventsRoutes.js';
 import discoveriesRoutes from './routes/discoveriesRoutes.js';
@@ -9,16 +11,22 @@ import healthRoutes from './routes/healthRoutes.js';
 import socialRoutes from './routes/socialRoutes.js';
 
 const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
 
-const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const clientOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman) or matching frontend
-    if (!origin || origin === clientOrigin || origin.startsWith('http://localhost:')) {
+    // Requests without an Origin header include server-to-server calls, curl, and Postman.
+    if (!origin || clientOrigins.includes(origin) || (!isProduction && origin.startsWith('http://localhost:'))) {
       callback(null, true);
     } else {
-      callback(null, true); // Permissive in dev, configurable for production
+      callback(new Error('Origin is not allowed by CORS.'));
     }
   },
   credentials: true
@@ -35,6 +43,16 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/social', socialRoutes);
 // DELETE /api/:kind/:id
 app.use('/api', deleteRoutes);
+
+// Render runs this Express process at the public URL. When the React build is
+// present, serve it here so visiting `/` loads Orbit Notes rather than an API 404.
+app.use(express.static(frontendDistPath));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(frontendDistPath, 'index.html'), (err) => {
+    if (err) next();
+  });
+});
 
 // 404 handler
 app.use((req, res) => {
